@@ -77,8 +77,17 @@ def render_distributions(df: pd.DataFrame) -> None:
                 "Rank by", numeric_cols, key="rank_metric"
             )
         with c2:
-            max_n = min(30, max(5, len(df)))
-            top_n = st.slider("Top N", 5, max(5, max_n), min(15, max_n), key="top_n")
+            num_tracks = len(df)
+            if num_tracks > 5:
+                top_n = st.slider(
+                    "Top N",
+                    min_value=5,
+                    max_value=min(30, num_tracks),
+                    value=min(15, num_tracks),
+                    key="top_n",
+                )
+            else:
+                top_n = num_tracks
 
         top = df.nlargest(top_n, rank_metric)[[label_col, "Artist", rank_metric]].copy()
         top["label"] = top[label_col].astype(str).str[:30] + " · " + top["Artist"].astype(str).str[:20]
@@ -92,3 +101,4 @@ def render_distributions(df: pd.DataFrame) -> None:
             height=max(350, top_n * 28),
         )
         st.plotly_chart(fig, use_container_width=True)
+

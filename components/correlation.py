@@ -58,3 +58,4 @@ def render_correlation_heatmap(df: pd.DataFrame) -> None:
         hovertemplate="%{x} vs %{y}: %{z:.2f}<extra></extra>",
     )
     st.plotly_chart(fig, use_container_width=True)
+

@@ -74,3 +74,4 @@ def test_platform_efficiency_zero_playlists():
     })
     eff = compute_platform_efficiency(df)
     assert eff.empty
+

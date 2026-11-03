@@ -120,8 +120,17 @@ def render_artist_analytics(df: pd.DataFrame) -> None:
                 key="artist_rank_metric",
             )
         with c2:
-            max_limit = min(20, max(5, len(artist_df)))
-            top_n = st.slider("Top N", 5, max(5, max_limit), min(10, max_limit), key="artist_top_n")
+            num_artists = len(artist_df)
+            if num_artists > 5:
+                top_n = st.slider(
+                    "Top N",
+                    min_value=5,
+                    max_value=min(20, num_artists),
+                    value=min(10, num_artists),
+                    key="artist_top_n",
+                )
+            else:
+                top_n = num_artists
 
         rank_col = dict(metrics)[selected_label]
         top_artists = artist_df.nlargest(top_n, rank_col).sort_values(rank_col, ascending=True)
@@ -240,3 +249,4 @@ def render_artist_analytics(df: pd.DataFrame) -> None:
 
     for insight in insights:
         st.markdown(f"• {insight}")
+

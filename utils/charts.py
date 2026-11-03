@@ -37,3 +37,4 @@ def horizontal_bar(
         **extra_layout,
     )
     return fig
+

@@ -223,3 +223,4 @@ def render_platform_insights(df: pd.DataFrame) -> None:
                 st.info(f"Dataset currently filtered to a single release year ({yearly['Release Year'].iloc[0]}).")
         else:
             st.info("Release dates not available for trajectory analysis.")
+

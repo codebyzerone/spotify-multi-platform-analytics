@@ -143,6 +143,9 @@ def main() -> None:
                 st.stop()
 
     # Priority 3: Interactive demo mode
+    if st.query_params.get("demo", "").lower() in ("true", "1", "yes"):
+        set_demo_mode(True)
+
     if raw is None and is_demo_mode():
         raw = generate_demo_dataframe()
 

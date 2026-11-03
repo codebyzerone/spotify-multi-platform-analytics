@@ -41,3 +41,4 @@ def render_kpis(df: pd.DataFrame) -> None:
             st.metric("Unique Artists", f"{df['Artist'].nunique():,}")
         else:
             st.metric("Unique Artists", "N/A")
+

@@ -66,3 +66,4 @@ SPOTIFY_COLORS: list[str] = [
     "#b3b3b3", "#ff6b6b", "#ffd93d", "#6bcbff",
     "#c084fc", "#fb923c", "#f472b6",
 ]
+

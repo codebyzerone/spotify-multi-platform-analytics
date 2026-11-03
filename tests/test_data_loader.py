@@ -195,3 +195,4 @@ def test_corrupt_upload_handling():
         zf.writestr("readme.txt", "No csv here")
     with pytest.raises(ValueError, match="does not contain any CSV"):
         load_uploaded_file(MockUpload("no_csv.zip", buf.getvalue()))
+
