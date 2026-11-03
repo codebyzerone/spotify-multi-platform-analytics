@@ -721,6 +721,13 @@ def main() -> None:
 
     df = clean_data(raw)
 
+    if df.empty:
+        st.error(
+            "**No valid data rows found in the dataset.**\n\n"
+            "All rows were empty or invalid. Please upload a valid CSV or ZIP file."
+        )
+        st.stop()
+
     # Validate after cleaning
     missing = validate_required_columns(df)
     if missing:

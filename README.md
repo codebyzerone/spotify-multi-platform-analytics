@@ -118,6 +118,22 @@ On first run (without the Kaggle CSV), click **"Load demo sample"** to explore t
 
 ---
 
+## ☁️ Deployment (Streamlit Community Cloud)
+
+This app is zero-configuration and deploy-ready with no secrets or API keys required:
+
+1. Fork or push this repository to your GitHub account.
+2. Sign in to [Streamlit Community Cloud](https://share.streamlit.io/).
+3. Click **"New app"**.
+4. Configure your repository details:
+   - **Repository:** `your-username/spotify-multi-platform-analytics`
+   - **Branch:** `main` (or your feature branch)
+   - **Main file path:** `app.py`
+5. Click **"Deploy!"**.
+6. The application launches immediately in **Demo Mode** with interactive sample data, requiring no uploaded dataset to function. Users can upload their own dataset directly through the UI.
+
+---
+
 ## 📊 Dataset
 
 This project uses the **Spotify Most Streamed Spotify Songs 2024** dataset from Kaggle.

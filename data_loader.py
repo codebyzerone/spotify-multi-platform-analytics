@@ -104,17 +104,28 @@ def _coerce_numeric(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
 
 def _read_csv_from_zip(path: Path) -> pd.DataFrame:
     """Open a ZIP, find the first CSV inside, and read it."""
-    with zipfile.ZipFile(path, "r") as zf:
-        csv_names = [n for n in zf.namelist() if n.lower().endswith(".csv")]
-        if not csv_names:
-            raise ValueError(f"No CSV file found inside {path}")
-        with zf.open(csv_names[0]) as f:
-            raw = f.read()
+    try:
+        with zipfile.ZipFile(path, "r") as zf:
+            csv_names = [n for n in zf.namelist() if n.lower().endswith(".csv")]
+            if not csv_names:
+                raise ValueError(f"No CSV file found inside {path}")
+            with zf.open(csv_names[0]) as f:
+                raw = f.read()
+    except zipfile.BadZipFile:
+        raise ValueError(f"File {path} is not a valid ZIP archive or is corrupted.")
+
     for enc in ("utf-8", "latin-1", "cp1252"):
         try:
-            return pd.read_csv(io.BytesIO(raw), encoding=enc)
+            df = pd.read_csv(io.BytesIO(raw), encoding=enc)
+            if df.empty:
+                raise ValueError(f"The CSV file inside {path} is empty.")
+            return df
         except UnicodeDecodeError:
             continue
+        except pd.errors.EmptyDataError:
+            raise ValueError(f"The CSV file inside {path} contains no readable data.")
+        except pd.errors.ParserError as exc:
+            raise ValueError(f"Could not parse CSV inside {path}: {exc}")
     raise ValueError(f"Could not decode CSV inside {path} with any known encoding.")
 
 
@@ -145,9 +156,16 @@ def load_data(path: str | Path) -> pd.DataFrame:
         return _read_csv_from_zip(path)
     for enc in ("utf-8", "latin-1", "cp1252"):
         try:
-            return pd.read_csv(path, encoding=enc)
+            df = pd.read_csv(path, encoding=enc)
+            if df.empty:
+                raise ValueError(f"The file at {path} is empty.")
+            return df
         except UnicodeDecodeError:
             continue
+        except pd.errors.EmptyDataError:
+            raise ValueError(f"The file at {path} contains no readable data.")
+        except pd.errors.ParserError as exc:
+            raise ValueError(f"Could not parse CSV at {path}: {exc}")
     raise ValueError(f"Could not decode {path} with any known encoding.")
 
 
@@ -159,8 +177,11 @@ def load_uploaded_file(uploaded_file: UploadedFile) -> pd.DataFrame:
     """
     name = uploaded_file.name.lower()
     try:
+        raw_bytes = uploaded_file.read()
+        if not raw_bytes:
+            raise ValueError("The uploaded file is empty (0 bytes).")
+
         if name.endswith(".zip"):
-            raw_bytes = uploaded_file.read()
             with zipfile.ZipFile(io.BytesIO(raw_bytes), "r") as zf:
                 csv_names = [n for n in zf.namelist() if n.lower().endswith(".csv")]
                 if not csv_names:
@@ -171,26 +192,35 @@ def load_uploaded_file(uploaded_file: UploadedFile) -> pd.DataFrame:
                     )
                 with zf.open(csv_names[0]) as f:
                     csv_bytes = f.read()
-            for enc in ("utf-8", "latin-1", "cp1252"):
-                try:
-                    return pd.read_csv(io.BytesIO(csv_bytes), encoding=enc)
-                except UnicodeDecodeError:
-                    continue
-            raise ValueError(
-                "Could not decode the CSV inside the uploaded ZIP. "
-                "Try re-downloading the dataset from Kaggle."
-            )
+            target_bytes = csv_bytes
+            target_desc = "CSV inside the uploaded ZIP"
         else:
-            return pd.read_csv(uploaded_file)
+            target_bytes = raw_bytes
+            target_desc = "uploaded CSV file"
+
+        for enc in ("utf-8", "latin-1", "cp1252"):
+            try:
+                df = pd.read_csv(io.BytesIO(target_bytes), encoding=enc)
+                if df.empty:
+                    raise ValueError(f"The {target_desc} is empty.")
+                return df
+            except UnicodeDecodeError:
+                continue
+            except pd.errors.EmptyDataError:
+                raise ValueError(f"The {target_desc} contains no readable data.")
+            except pd.errors.ParserError as exc:
+                raise ValueError(
+                    f"Could not parse the {target_desc}: {exc}. "
+                    "Make sure the file is a valid comma-separated CSV."
+                )
+
+        raise ValueError(
+            f"Could not decode the {target_desc} with supported encodings (UTF-8, Latin-1, CP1252)."
+        )
     except zipfile.BadZipFile:
         raise ValueError(
             "The uploaded file is not a valid ZIP archive. "
             "Please upload a valid .csv or .zip file."
-        )
-    except pd.errors.ParserError as exc:
-        raise ValueError(
-            f"Could not parse the uploaded CSV: {exc}. "
-            "Make sure the file is a valid comma-separated CSV."
         )
 
 
@@ -227,9 +257,14 @@ def clean_data(df: pd.DataFrame) -> pd.DataFrame:
     # 5. Drop all-null rows
     df = df.dropna(how="all")
 
-    # 6. Fill missing numerics with median
+    if df.empty:
+        return df
+
+    # 6. Fill missing numerics with median (and 0 if median itself is NaN)
     num_present = [c for c in NUMERIC_COLS if c in df.columns]
-    df[num_present] = df[num_present].fillna(df[num_present].median())
+    if num_present:
+        medians = df[num_present].median().fillna(0)
+        df[num_present] = df[num_present].fillna(medians)
 
     return df
 

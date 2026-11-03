@@ -128,3 +128,4 @@ meaningful charts (enough variance, multiple artists, multiple years).
 - **walkthrough.spotifyEDA**: unknown format, will not touch.
 - **images.py/**: untracked, appears to be a naming mistake. Will not touch.
 - **No new dependencies** beyond pytest (dev-only).
+
