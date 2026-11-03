@@ -11,6 +11,7 @@ from pathlib import Path
 
 from data_loader import (
     load_data, load_uploaded_file, clean_data,
+    generate_demo_dataframe, validate_required_columns,
     ALL_PLATFORM_COLS, PLATFORM_METRICS,
 )
 
@@ -97,8 +98,22 @@ SPOTIFY_COLORS = [
 DATA_PATH = Path("data/spotify_2024.csv")
 DATA_ZIP_PATH = Path("data/spotify_2024.zip")
 
+# Session state key for demo mode — persists across Streamlit reruns.
+_DEMO_KEY = "demo_mode_active"
 
-def render_missing_data_page():
+
+def _activate_demo_mode() -> None:
+    """Set the session-state flag to enable demo mode."""
+    st.session_state[_DEMO_KEY] = True
+
+
+def _is_demo_mode() -> bool:
+    """Check whether the dashboard is currently running on demo data."""
+    return st.session_state.get(_DEMO_KEY, False)
+
+
+def render_missing_data_page() -> None:
+    """Landing page when no dataset is found — offers demo mode + upload."""
     st.markdown("---")
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -117,8 +132,22 @@ def render_missing_data_page():
         3. Rename it to `spotify_2024.csv`
         4. Place it in the `data/` folder of this project
         5. Refresh this page ↻
+
+        ---
+
+        ### Or try the demo
         """)
-    st.stop()
+        st.button(
+            "🎵 Load demo sample",
+            on_click=_activate_demo_mode,
+            type="primary",
+            use_container_width=True,
+            key="demo_button_landing",
+        )
+        st.caption(
+            "Loads 16 synthetic tracks with illustrative data — "
+            "not real Kaggle data."
+        )
 
 
 # ─── Shared Helpers ───────────────────────────────────────────────────────────
@@ -167,7 +196,7 @@ def _horizontal_bar(data: pd.DataFrame, x: str, y: str,
 
 # ─── Sidebar ──────────────────────────────────────────────────────────────────
 
-def render_sidebar(df: pd.DataFrame):
+def render_sidebar(df: pd.DataFrame) -> pd.DataFrame:
     """Render sidebar filters and return the filtered DataFrame."""
     with st.sidebar:
         st.markdown("## 🎧 Filters")
@@ -180,6 +209,7 @@ def render_sidebar(df: pd.DataFrame):
             options=artists,
             default=[],
             help="Leave empty to include all artists",
+            key="sidebar_artist_filter",
         )
 
         # Year range
@@ -192,6 +222,7 @@ def render_sidebar(df: pd.DataFrame):
                     min_value=min_yr,
                     max_value=max_yr,
                     value=(min_yr, max_yr),
+                    key="sidebar_year_slider",
                 )
             else:
                 year_range = (min_yr, max_yr)
@@ -200,6 +231,30 @@ def render_sidebar(df: pd.DataFrame):
 
         st.markdown("---")
         st.caption(f"**{len(df):,}** tracks loaded")
+
+        # In demo mode, offer a way to exit by uploading real data
+        if _is_demo_mode():
+            st.markdown("---")
+            uploaded = st.file_uploader(
+                "📤 Replace demo with your dataset",
+                type=["csv", "zip"],
+                key="sidebar_upload_replace",
+            )
+            if uploaded is not None:
+                try:
+                    raw = load_uploaded_file(uploaded)
+                    missing = validate_required_columns(raw)
+                    if missing:
+                        st.error(
+                            f"Missing required columns: {', '.join(missing)}. "
+                            "Please upload the Kaggle Spotify 2024 dataset."
+                        )
+                    else:
+                        st.session_state[_DEMO_KEY] = False
+                        st.session_state["_uploaded_raw_df"] = raw
+                        st.rerun()
+                except ValueError as exc:
+                    st.error(str(exc))
 
     # Apply filters
     mask = pd.Series(True, index=df.index)
@@ -213,7 +268,7 @@ def render_sidebar(df: pd.DataFrame):
 
 # ─── Section 1: KPI Row ──────────────────────────────────────────────────────
 
-def render_kpis(df: pd.DataFrame):
+def render_kpis(df: pd.DataFrame) -> None:
     """Render the top-level KPI metric cards."""
     cols = st.columns(5)
     with cols[0]:
@@ -229,7 +284,7 @@ def render_kpis(df: pd.DataFrame):
         else:
             st.metric("Avg Popularity", "N/A")
     with cols[3]:
-        if "Artist" in df.columns:
+        if "Artist" in df.columns and len(df) > 0:
             st.metric("Top Artist", df["Artist"].value_counts().idxmax())
         else:
             st.metric("Top Artist", "N/A")
@@ -252,9 +307,10 @@ _AGG_SPEC = [
 
 
 def _build_artist_agg(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Group by Artist and compute aggregate metrics.
-    Only includes columns that actually exist in the dataframe.
+    """Group by Artist and compute aggregate metrics.
+
+    Only includes columns that actually exist in the dataframe so the
+    dashboard degrades gracefully when optional columns are absent.
     Returns a sorted DataFrame (by Total Streams desc, then Tracks desc).
     """
     track_col = _get_track_col(df)
@@ -277,8 +333,7 @@ def _build_artist_agg(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _available_metrics(artist_df: pd.DataFrame) -> list[tuple[str, str]]:
-    """
-    Return [(display_label, column_name), …] for every metric column
+    """Return [(display_label, column_name), …] for every metric column
     present in the aggregated artist DataFrame.
     """
     candidates = [
@@ -292,9 +347,9 @@ def _available_metrics(artist_df: pd.DataFrame) -> list[tuple[str, str]]:
     return [(label, col) for label, col in candidates if col in artist_df.columns]
 
 
-def render_artist_analytics(df: pd.DataFrame):
-    """
-    🎤 Artist Analytics — master section.
+def render_artist_analytics(df: pd.DataFrame) -> None:
+    """🎤 Artist Analytics — master section.
+
     Renders: performance table, top-N chart, artist comparison, auto-insights.
     """
     st.markdown("## 🎤 Artist Analytics")
@@ -436,7 +491,8 @@ def render_artist_analytics(df: pd.DataFrame):
         )
 
     # Average tracks per artist
-    insights.append(f"**Average tracks per artist:** {artist_df['Tracks'].mean():.1f}")
+    if "Tracks" in artist_df.columns:
+        insights.append(f"**Average tracks per artist:** {artist_df['Tracks'].mean():.1f}")
 
     # Data-driven "best of" insights
     best_of = [
@@ -463,7 +519,7 @@ def render_artist_analytics(df: pd.DataFrame):
 
 # ─── Section 3: Correlation Heatmap ──────────────────────────────────────────
 
-def render_correlation_heatmap(df: pd.DataFrame):
+def render_correlation_heatmap(df: pd.DataFrame) -> None:
     """Render a Plotly correlation heatmap for numeric features."""
     st.markdown("## 🔥 Feature Correlation Heatmap")
     st.caption("Pearson correlations across streaming & platform metrics")
@@ -471,6 +527,7 @@ def render_correlation_heatmap(df: pd.DataFrame):
     numeric_cols = [c for c in df.select_dtypes(include="number").columns
                     if c != "Release Year"]
     if len(numeric_cols) < 2:
+        st.info("Not enough numeric columns to compute correlations.")
         return
 
     # Let user pick which columns to include
@@ -512,7 +569,7 @@ def render_correlation_heatmap(df: pd.DataFrame):
 
 # ─── Section 4: Distribution Explorer ────────────────────────────────────────
 
-def render_distributions(df: pd.DataFrame):
+def render_distributions(df: pd.DataFrame) -> None:
     """Render distribution histograms/violins and Top-N track rankings."""
     st.markdown("## 📊 Distribution Explorer")
 
@@ -523,6 +580,7 @@ def render_distributions(df: pd.DataFrame):
 
     with tab_dist:
         if not numeric_cols:
+            st.info("No numeric columns available for distribution plots.")
             return
         col_pick = st.selectbox("Select a metric", numeric_cols, key="dist_col")
 
@@ -558,6 +616,7 @@ def render_distributions(df: pd.DataFrame):
 
         label_col = _get_track_col(df)
         if label_col is None:
+            st.info("No track-name column found for rankings.")
             return
 
         with c1:
@@ -581,7 +640,7 @@ def render_distributions(df: pd.DataFrame):
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
-def main():
+def main() -> None:
     # Header
     st.markdown("""
     <div style='text-align:center; padding: 10px 0 0 0;'>
@@ -598,32 +657,87 @@ def main():
     """, unsafe_allow_html=True)
 
     # ── Load data ──
-    data_path = None
-    if DATA_PATH.exists():
-        data_path = DATA_PATH
-    elif DATA_ZIP_PATH.exists():
-        data_path = DATA_ZIP_PATH
+    raw = None
 
-    if data_path is None:
+    # Priority 1: uploaded data that replaced demo mode
+    if "_uploaded_raw_df" in st.session_state:
+        raw = st.session_state.pop("_uploaded_raw_df")
+
+    # Priority 2: file on disk
+    if raw is None:
+        data_path = None
+        if DATA_PATH.exists():
+            data_path = DATA_PATH
+        elif DATA_ZIP_PATH.exists():
+            data_path = DATA_ZIP_PATH
+
+        if data_path is not None:
+            try:
+                raw = load_data(data_path)
+            except (ValueError, Exception) as exc:
+                st.error(
+                    f"**Error loading dataset:** {exc}\n\n"
+                    "Try re-downloading the CSV from Kaggle, or upload it directly."
+                )
+                st.stop()
+
+    # Priority 3: demo mode (persists across reruns via session state)
+    if raw is None and _is_demo_mode():
+        raw = generate_demo_dataframe()
+
+    # Priority 4: file upload or show landing page
+    if raw is None:
         st.markdown("---")
         uploaded = st.file_uploader(
             "📤 Upload your Spotify 2024 dataset", type=["csv", "zip"],
+            key="main_file_uploader",
         )
         if uploaded is not None:
-            raw = load_uploaded_file(uploaded)
+            try:
+                raw = load_uploaded_file(uploaded)
+                missing = validate_required_columns(raw)
+                if missing:
+                    st.error(
+                        f"**Missing required columns:** {', '.join(missing)}.\n\n"
+                        "Please upload the [Kaggle Spotify 2024 dataset]"
+                        "(https://www.kaggle.com/datasets/nelgiriyewithana/"
+                        "most-streamed-spotify-songs-2024)."
+                    )
+                    st.stop()
+            except ValueError as exc:
+                st.error(str(exc))
+                st.stop()
         else:
             render_missing_data_page()
-            return
-    else:
-        raw = load_data(data_path)
+            st.stop()
+
+    # ── Demo banner ──
+    if _is_demo_mode():
+        st.warning(
+            "🎵 **Demo sample** — You are viewing illustrative data with "
+            "synthetic tracks. Upload the real Kaggle dataset to replace it.",
+            icon="⚠️",
+        )
 
     df = clean_data(raw)
+
+    # Validate after cleaning
+    missing = validate_required_columns(df)
+    if missing:
+        st.error(
+            f"**Missing required columns after cleaning:** {', '.join(missing)}.\n\n"
+            "The uploaded file does not appear to be the Spotify 2024 dataset."
+        )
+        st.stop()
 
     # ── Sidebar ──
     filtered = render_sidebar(df)
 
     if filtered.empty:
-        st.warning("No tracks match the current filters. Adjust the sidebar.")
+        st.warning(
+            "No tracks match the current filters. "
+            "Try broadening the artist selection or year range in the sidebar."
+        )
         st.stop()
 
     # ── KPIs ──

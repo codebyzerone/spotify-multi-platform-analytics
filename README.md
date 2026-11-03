@@ -6,25 +6,18 @@ Instead of displaying static charts, the dashboard allows users to upload the da
 
 ---
 
-## 📸 Dashboard Preview
+## 📸 Screenshots
 
-> *(Add screenshots here after deployment)*
-
-### Dashboard Overview
-![Dashboard](images/dashboard.png)
-
-### Artist Analytics
-![Artist Analytics](images/artist_analytics.png)
-
-### Correlation Heatmap
-![Correlation](images/correlation_heatmap.png)
-
-### Distribution Explorer
-![Distribution](images/distribution.png)
+> Screenshots will be added after the UI polish phase. Run the app with demo data to see the dashboard in action.
 
 ---
 
 ## ✨ Features
+
+### 🎵 Demo Mode
+- Try the dashboard instantly — no downloads needed.
+- Click **"Load demo sample"** to explore with 16 synthetic tracks.
+- Demo data is clearly labelled and can be replaced by uploading the real dataset.
 
 ### 📂 Dataset Upload
 - Upload the **Spotify Most Streamed Songs 2024** dataset (CSV or ZIP).
@@ -55,18 +48,8 @@ Visualize how different ranking metrics are distributed across the dataset.
 
 Supports:
 - Histograms
+- Violin plots
 - Top-N Rankings
-
-### 🏆 Ranking Analysis
-Rank tracks using different metrics such as:
-- Spotify Streams
-- Track Score
-- Spotify Popularity
-- YouTube Views
-- TikTok Posts
-- Apple Music Playlist Count
-- Deezer Playlist Count
-- Amazon Playlist Count
 
 ### 💡 Artist Insights
 Automatically summarizes key observations, including:
@@ -82,7 +65,7 @@ Filter the dashboard by:
 
 ---
 
-# 🛠 Tech Stack
+## 🛠 Tech Stack
 
 | Technology | Purpose |
 |------------|---------|
@@ -90,20 +73,17 @@ Filter the dashboard by:
 | Streamlit | Interactive web application |
 | Pandas | Data cleaning & analysis |
 | Plotly Express | Interactive visualizations |
-| Matplotlib | Statistical plotting |
-| Seaborn | Correlation heatmaps |
 | NumPy | Numerical operations |
 
 ---
 
-# 📂 Project Structure
+## 📂 Project Structure
 
 ```text
 spotify-multi-platform-analytics/
-
 ├── app.py                  # Streamlit application
 ├── data_loader.py          # Dataset loading & preprocessing
-├── data/                   # Dataset location
+├── data/                   # Dataset location (CSV not committed)
 ├── requirements.txt
 ├── README.md
 ├── LICENSE
@@ -113,15 +93,12 @@ spotify-multi-platform-analytics/
 
 ---
 
-# 🚀 Getting Started
+## 🚀 Getting Started
 
 ### Clone the repository
 
 ```bash
 git clone https://github.com/codebyzerone/spotify-multi-platform-analytics.git
-```
-
-```bash
 cd spotify-multi-platform-analytics
 ```
 
@@ -137,17 +114,25 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
----
-
-# 📊 Dataset
-
-This project uses the **Spotify Most Streamed Songs 2024** dataset available on Kaggle.
-
-Download the dataset and upload it through the dashboard.
+On first run (without the Kaggle CSV), click **"Load demo sample"** to explore the dashboard with synthetic data.
 
 ---
 
-# 📚 What I Learned
+## 📊 Dataset
+
+This project uses the **Spotify Most Streamed Spotify Songs 2024** dataset from Kaggle.
+
+**The dataset is NOT included in this repository** because its Kaggle license does not permit redistribution. To use real data:
+
+1. Visit [Kaggle – Most Streamed Spotify Songs 2024](https://www.kaggle.com/datasets/nelgiriyewithana/most-streamed-spotify-songs-2024)
+2. Download the CSV file
+3. Rename it to `spotify_2024.csv`
+4. Place it in the `data/` folder
+5. Refresh the dashboard
+
+---
+
+## 📚 What I Learned
 
 While building this project I gained practical experience with:
 
@@ -161,24 +146,13 @@ While building this project I gained practical experience with:
 
 ---
 
-# 🔮 Future Improvements
-
-Some ideas that could further extend this project:
-
-- Export charts as images or PDFs
-- Advanced filtering options
-- Search by song title
-- Additional statistical insights
-
----
-
-# 📄 License
+## 📄 License
 
 This project is licensed under the **MIT License**.
 
 ---
 
-# 👨‍💻 Author
+## 👨‍💻 Author
 
 **Manodip Bhattacharjee**
 
