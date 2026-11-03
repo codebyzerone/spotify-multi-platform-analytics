@@ -53,8 +53,28 @@ def render_sidebar(df: pd.DataFrame) -> pd.DataFrame:
         else:
             year_range = None
 
+        # Apply filters
+        mask = pd.Series(True, index=df.index)
+        if selected_artists:
+            mask &= df["Artist"].isin(selected_artists)
+        if year_range is not None:
+            mask &= df["Release Year"].between(*year_range)
+
+        filtered = df[mask]
+
         st.markdown("---")
-        st.caption(f"**{len(df):,}** tracks loaded")
+        st.caption(f"**{len(filtered):,}** of **{len(df):,}** tracks selected")
+
+        if not filtered.empty:
+            csv_bytes = filtered.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                label="📥 Download filtered data (CSV)",
+                data=csv_bytes,
+                file_name="spotify_filtered_tracks.csv",
+                mime="text/csv",
+                key="sidebar_download_csv",
+                use_container_width=True,
+            )
 
         # In demo mode, offer a way to exit by uploading real data
         if is_demo_mode():
@@ -80,11 +100,4 @@ def render_sidebar(df: pd.DataFrame) -> pd.DataFrame:
                 except ValueError as exc:
                     st.error(str(exc))
 
-    # Apply filters
-    mask = pd.Series(True, index=df.index)
-    if selected_artists:
-        mask &= df["Artist"].isin(selected_artists)
-    if year_range is not None:
-        mask &= df["Release Year"].between(*year_range)
-
-    return df[mask]
+    return filtered

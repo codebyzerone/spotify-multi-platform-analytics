@@ -13,6 +13,7 @@ import streamlit as st
 from components.artist import render_artist_analytics
 from components.correlation import render_correlation_heatmap
 from components.distributions import render_distributions
+from components.insights import render_platform_insights
 from components.kpis import render_kpis
 from components.sidebar import is_demo_mode, render_sidebar, set_demo_mode
 from data_loader import (
@@ -212,6 +213,9 @@ def main() -> None:
     st.markdown("---")
 
     render_artist_analytics(filtered)
+    st.markdown("---")
+
+    render_platform_insights(filtered)
     st.markdown("---")
 
     render_correlation_heatmap(filtered)
